@@ -1,68 +1,89 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using System.Collections;
 
 public class PlayerMovement : MonoBehaviour
 {
-    [SerializeField] private float speed = 5f;
+    [Header("Movement")]
+    [SerializeField] private float moveSpeed = 5f;
+    [SerializeField] private float jumpForce = 7f;
+
+    [Header("Attack")]
+    [SerializeField] private PlayerAttackHitbox attackCtrl; // drag the child AttackHitbox here
+
     private Rigidbody2D body;
     private Animator anim;
-    private bool isJumping;
+    private bool grounded;
+    private Vector3 baseScale;
+
+    // Animator params
+    private static readonly int RunHash       = Animator.StringToHash("run");
+    private static readonly int JumpTrigHash  = Animator.StringToHash("jump");
+    private static readonly int GroundedHash  = Animator.StringToHash("grounded");
+    private static readonly int AttackTrigHash= Animator.StringToHash("attack");
 
     private void Awake()
     {
-        // Cache the Rigidbody2D once
         body = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
+        baseScale = transform.localScale; // e.g., (1.3, 1.3, 1.3)
     }
 
-
-    // Start is called before the first frame update
-    void Start()
+    private void Update()
     {
+        // --- horizontal move ---
+        float x = Input.GetAxisRaw("Horizontal");
+        body.velocity = new Vector2(x * moveSpeed, body.velocity.y);
 
+        // --- flip (preserve scale magnitude; your art faces left by default) ---
+        if (Mathf.Abs(x) > 0.01f)
+        {
+            float mag = Mathf.Abs(baseScale.x);
+            float sign = (x > 0f) ? -1f : 1f; // right -> negative X, left -> positive X
+            transform.localScale = new Vector3(mag * sign, baseScale.y, baseScale.z);
+        }
+
+        // --- jump from any state when grounded ---
+        if (Input.GetKeyDown(KeyCode.Space) && grounded)
+        {
+            body.velocity = new Vector2(body.velocity.x, jumpForce);
+            grounded = false;
+            anim.SetBool(GroundedHash, false);
+            anim.ResetTrigger(JumpTrigHash);
+            anim.SetTrigger(JumpTrigHash);
+        }
+
+        // --- attack from any state (J or left mouse) ---
+        if (Input.GetKeyDown(KeyCode.J) || Input.GetMouseButtonDown(0))
+        {
+            anim.ResetTrigger(AttackTrigHash);
+            anim.SetTrigger(AttackTrigHash);
+            if (attackCtrl) StartCoroutine(attackCtrl.AttackWindow()); // enables the hitbox briefly
+        }
+
+        // --- drive run (don’t show run while attacking) ---
+        bool inAttack = anim.GetCurrentAnimatorStateInfo(0).IsName("attack");
+        anim.SetBool(RunHash, Mathf.Abs(x) > 0.01f && grounded && !inAttack);
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-
-        float horizontalInput = Input.GetAxis("Horizontal");
-        body.velocity = new Vector2(horizontalInput * speed, body.velocity.y);
-
-        if (horizontalInput > 0.01f)
-        {
-            transform.localScale = new Vector3(-1.3f, 1.3f, 1.3f);
-        }
-        else if (horizontalInput < -0.01f)
-        {
-            transform.localScale = new Vector3(1.3f, 1.3f, 1.3f);
-        }
-
-        if (Input.GetKey(KeyCode.Space) && !isJumping)
-        {
-            body.velocity = new Vector2(body.velocity.x, speed);
-            isJumping = true;
-        }
-
-        anim.SetBool("run", horizontalInput != 0);
-
-    }
-
-    void OnCollisionEnter2D(Collision2D other)
-    {
-        if (other.gameObject.CompareTag("Ground"))
-        {
-            isJumping = false;
-        }
-    }
-
-    void OnCollisionExit2D(Collision2D other)
+    private void OnCollisionEnter2D(Collision2D other)
     {
         if (other.gameObject.CompareTag("Ground"))
         {
-            isJumping = true;
+            grounded = true;
+            anim.SetBool(GroundedHash, true);
         }
     }
-    
+
+    private void OnCollisionExit2D(Collision2D other)
+    {
+        if (other.gameObject.CompareTag("Ground"))
+        {
+            grounded = false;
+            anim.SetBool(GroundedHash, false);
+
+            // falling off platforms should also play jump
+            anim.ResetTrigger(JumpTrigHash);
+            anim.SetTrigger(JumpTrigHash);
+        }
+    }
 }

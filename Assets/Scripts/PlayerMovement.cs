@@ -20,16 +20,26 @@ public class PlayerMovement : MonoBehaviour
     private static readonly int JumpTrigHash  = Animator.StringToHash("jump");
     private static readonly int GroundedHash  = Animator.StringToHash("grounded");
     private static readonly int AttackTrigHash= Animator.StringToHash("attack");
+    
+    [SerializeField] private AudioClip jumpSound;
 
     private void Awake()
     {
         body = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
-        baseScale = transform.localScale; // e.g., (1.3, 1.3, 1.3)
+        baseScale = transform.localScale;
     }
 
     private void Update()
     {
+        if (PlayerState.Instance.CurrentState == State.Death)
+        {
+            anim.SetBool("isDead", true);
+            return;
+        }
+        
+        anim.SetBool("isDead", false);
+        
         // --- horizontal move ---
         float x = Input.GetAxisRaw("Horizontal");
         body.velocity = new Vector2(x * moveSpeed, body.velocity.y);
@@ -45,19 +55,12 @@ public class PlayerMovement : MonoBehaviour
         // --- jump from any state when grounded ---
         if (Input.GetKeyDown(KeyCode.Space) && grounded)
         {
+            SoundManager.Instance.PlaySound(jumpSound);
             body.velocity = new Vector2(body.velocity.x, jumpForce);
             grounded = false;
             anim.SetBool(GroundedHash, false);
             anim.ResetTrigger(JumpTrigHash);
             anim.SetTrigger(JumpTrigHash);
-        }
-
-        // --- attack from any state (J or left mouse) ---
-        if (Input.GetKeyDown(KeyCode.J) || Input.GetMouseButtonDown(0))
-        {
-            anim.ResetTrigger(AttackTrigHash);
-            anim.SetTrigger(AttackTrigHash);
-            if (attackCtrl) StartCoroutine(attackCtrl.AttackWindow()); // enables the hitbox briefly
         }
 
         // --- drive run (don’t show run while attacking) ---

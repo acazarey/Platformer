@@ -27,5 +27,11 @@ public class PointManager : MonoBehaviour
 		OnPointChanged?.Invoke(points);
 	}
 
+	public void ResetPoints()
+	{
+		points = 0;
+		OnPointChanged?.Invoke(points);
+	}
+
 	public int GetPoints() => points;
 }

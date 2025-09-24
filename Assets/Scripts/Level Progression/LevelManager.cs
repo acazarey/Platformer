@@ -18,14 +18,18 @@ public class LevelManager : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
     }
-    
+
+  
+
     public void LoadNextLevel(string nextLevelName)
     {
         SceneManager.LoadScene(nextLevelName);
+        Time.timeScale = 1;
     }
 
     public void RestartCurrentLevel()
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        
     }
 }

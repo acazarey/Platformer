@@ -18,7 +18,6 @@ public class PlayerState : MonoBehaviour
             return;
         }
         Instance = this;
-        DontDestroyOnLoad(gameObject);
     }
     
     public void ChangeState(State newState)
